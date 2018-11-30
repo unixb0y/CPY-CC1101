@@ -35,3 +35,17 @@ This is a work in progress, so the current status is:
 
 * Transmitting data works perfectly fine using TICC1101.sendData() and passing a list of bytes to send.
 * The receiver part seems to work in terms of 'doing something' but I'm not sure whether it's fully configured properly yet and will try to get it up and running asap as well.
+
+You can have multiple antennas because of some of my changes to the original code. For example, the SPI object has to be created in your `code.py` class and passed to the TICC1101 constructor, like following:
+
+```python
+mySPI = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+
+cs_a = DigitalInOut(board.D9)
+cs_b = DigitalInOut(board.D6)
+ticc1101_a = TICC1101(cs=cs_a, spi=mySPI)
+ticc1101_b = TICC1101(cs=cs_b, spi=mySPI)
+
+# then do stuff with either one of the antennas, but only AFTER creating both TICC1101 objects.
+
+```
