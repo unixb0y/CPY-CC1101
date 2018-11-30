@@ -1,6 +1,6 @@
 # README #
 
-PYCC1101 a simple Python wrapper for the [CC1101](http://www.ti.com/product/CC1101) RF Transceiver from [Nahuel Sanchez](https://github.com/nahueldsanchez) which I have ported to CircuitPython so that it runs on Adafruits new CP-supporting devices. I've been using it with a [CC1101 Arduino module](https://www.amazon.com/Solu-Wireless-Transceiver-Antenna-Arduino/dp/B00XDL9838/ref=pd_sbs_147_6?_encoding=UTF8&psc=1&refRID=51K5G4WS9ZPJVE7HC2MW) connected trough SPI to an Adafruit Feather M4 Express.
+PYCC1101 a simple Python wrapper for the [CC1101](http://www.ti.com/product/CC1101) RF Transceiver from [Nahuel Sanchez](https://github.com/nahueldsanchez) which I have ported to [CircuitPython](https://learn.adafruit.com/welcome-to-circuitpython/what-is-circuitpython) so that it runs on Adafruits new CP-supporting devices. I've been using it with a [CC1101 Arduino module](https://www.amazon.com/Solu-Wireless-Transceiver-Antenna-Arduino/dp/B00XDL9838/ref=pd_sbs_147_6?_encoding=UTF8&psc=1&refRID=51K5G4WS9ZPJVE7HC2MW) connected trough SPI to an Adafruit Feather M4 Express.
 The code is based on [PanStamp Arduino library ](https://github.com/panStamp/arduino_avr).
 
 Example code for a transmitter:
