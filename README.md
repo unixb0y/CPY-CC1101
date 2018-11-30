@@ -1,16 +1,37 @@
 # README #
 
-PYCC1101 a simple Python wrapper for the [CC1101](http://www.ti.com/product/CC1101) RF Transceiver. I've been using it with a [CC1101 Arduino module](https://www.amazon.com/Solu-Wireless-Transceiver-Antenna-Arduino/dp/B00XDL9838/ref=pd_sbs_147_6?_encoding=UTF8&psc=1&refRID=51K5G4WS9ZPJVE7HC2MW) connected trough SPI to a Raspberry Pi.
-The code is based on [PanStamp Arduino library ](https://github.com/panStamp/arduino_avr). It uses the Python [SPIDEV module v3.3](https://pypi.python.org/pypi/spidev).
+PYCC1101 a simple Python wrapper for the [CC1101](http://www.ti.com/product/CC1101) RF Transceiver from [Nahuel Sanchez](https://github.com/nahueldsanchez) which I have ported to CircuitPython so that it runs on Adafruits new CP-supporting devices. I've been using it with a [CC1101 Arduino module](https://www.amazon.com/Solu-Wireless-Transceiver-Antenna-Arduino/dp/B00XDL9838/ref=pd_sbs_147_6?_encoding=UTF8&psc=1&refRID=51K5G4WS9ZPJVE7HC2MW) connected trough SPI to an Adafruit Feather M4 Express.
+The code is based on [PanStamp Arduino library ](https://github.com/panStamp/arduino_avr).
 
-I developed this module for learning purposes and included two simple examples for rx and tx. The idea is to continue improving the module to perform more complex task, for example implementing [Sammy's OpenSesame attack](http://samy.pl/opensesame/). AFAIK there isn't any Python module public available to play with CC1101 SPI devices.
+Example code for a transmitter:
 
-### Steps to make it work ###
+```python
+from cpycc1101.cpycc1101 import TICC1101
+from digitalio import DigitalInOut
+import board
+import busio
 
-1. Clone this repository
-2. virutalenv pycc1101
-3. Activate the virtualenv
-4. pip install spidev
-5. python tx.py
-6. Perform steps 1-4 in other machine with the module connected.
-7. python rx.py
+mySPI = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+
+cs_pin = DigitalInOut(board.D9)
+ticc1101 = TICC1101(cs=cs_pin, spi=mySPI)
+ticc1101.reset()
+ticc1101.selfTest()
+ticc1101.setDefaultValues()
+ticc1101.setFilteringAddress(0x0A)
+ticc1101.setPacketMode("PKT_LEN_FIXED")
+ticc1101.configureAddressFiltering("DISABLED")
+ticc1101.setSyncMode(0)
+
+ticc1101.sendData(prepare("1111111111111111000010000111000000"))
+
+def prepare(string):
+    one = 0b00000011
+    zero = 0b00111111
+    return list(map(lambda x: zero if x=='0' else one, list(string)))
+```
+
+This is a work in progress, so the current status is:
+
+* Transmitting data works perfectly fine using TICC1101.sendData() and passing a list of bytes to send.
+* The receiver part seems to work in terms of 'doing something' but I'm not sure whether it's fully configured properly yet and will try to get it up and running asap as well.
