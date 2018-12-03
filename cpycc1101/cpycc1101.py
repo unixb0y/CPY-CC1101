@@ -314,7 +314,7 @@ class TICC1101(object):
         self._writeSingleByte(self.IOCFG2, 0x2E)    # Panstamp
         self._writeSingleByte(self.IOCFG1, 0x2E)    # Panstamp
         self._writeSingleByte(self.IOCFG0, 0x06)    # Panstamp
-        self._writeSingleByte(self.FIFOTHR, 0x07)   # Panstamp 0x07 // unixb0y set threshold
+        self._writeSingleByte(self.FIFOTHR, 0x47)   # Panstamp 0x07 // unixb0y set threshold
         self._writeSingleByte(self.PKTLEN, 0x23)    # 0x22 = 34 // unixb0y automatically conf in sendData
         self._writeSingleByte(self.PKTCTRL1, 0x04)  # Panstamp 0x06
         self._writeSingleByte(self.PKTCTRL0, 0x00)  # Panstamp 0x04
@@ -357,8 +357,8 @@ class TICC1101(object):
         self._writeSingleByte(self.FSTEST, 0x59)
         self._writeSingleByte(self.PTEST, 0x7F)
         self._writeSingleByte(self.AGCTEST, 0x3F)
-        self._writeSingleByte(self.TEST2, 0x88)     # Panstamp 0x81
-        self._writeSingleByte(self.TEST1, 0x31)     # Panstamp 0x35
+        self._writeSingleByte(self.TEST2, 0x81)     # Panstamp 0x81
+        self._writeSingleByte(self.TEST1, 0x35)     # Panstamp 0x35
         self._writeSingleByte(self.TEST0, 0x0B)     # Panstamp 0x09
         self._writeSingleByte(0x3E, 0xC0)           # Power 10dBm // unixb0y: set to high power
 
@@ -497,6 +497,8 @@ class TICC1101(object):
                 self._flushRXFifo()
 
             marcstate = self._getMRStateMachineState()
+
+        self._usDelay(500)
 
         if len(dataBytes) == 0:
             if self.debug:
