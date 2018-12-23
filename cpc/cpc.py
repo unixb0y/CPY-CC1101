@@ -1,6 +1,8 @@
 from digitalio import DigitalInOut
 import board
 import busio
+import time
+import math
 from adafruit_bus_device.spi_device import SPIDevice
 
 WRITE_SINGLE_BYTE = 0x00
@@ -125,12 +127,11 @@ class CC1101:
         self.writeSingleByte(FREQ1, byte1)
         self.writeSingleByte(FREQ0, byte0)
 
-
         assert len(syncword) == 4
         self.writeSingleByte(SYNC1, int(syncword[:2], 16))
         self.writeSingleByte(SYNC0, int(syncword[2:], 16))
 
-        self.writeSingleByte(PKTLEN, 0x15)
+        self.writeBurst(PATABLE, PA_TABLE)        
 
     def setupRX(self):
         self.writeSingleByte(IOCFG2, 0x29)    
@@ -174,7 +175,6 @@ class CC1101:
         self.writeSingleByte(TEST2, 0x81)     
         self.writeSingleByte(TEST1, 0x35)     
         self.writeSingleByte(TEST0, 0x09)
-        self.writeBurst(PATABLE, PA_TABLE)
 
     def setupTX(self):
         self.writeSingleByte(IOCFG2, 0x69)    
@@ -218,7 +218,6 @@ class CC1101:
         self.writeSingleByte(TEST2, 0x81)     
         self.writeSingleByte(TEST1, 0x35)     
         self.writeSingleByte(TEST0, 0x0B)
-        self.writeBurst(PATABLE, PA_TABLE)
 
     def writeSingleByte(self, address, byte_data):
         databuffer = bytearray([WRITE_SINGLE_BYTE | address, byte_data])
@@ -257,7 +256,8 @@ class CC1101:
             d.readinto(databuffer, end=2)
         return databuffer
 
-    def receiveData(self):
+    def receiveData(self, length):
+        self.writeSingleByte(PKTLEN, length)
         self.strobe(SRX)
         print("waiting for data")
 
@@ -269,15 +269,23 @@ class CC1101:
             pass
         #detected falling edge
 
-        data_len = self.readSingleByte(PKTLEN)+2 # add 2 status bytes
+        data_len = length+2 # add 2 status bytes
         data = self.readBurst(RXFIFO, data_len)
         dataStr = ''.join(list(map(lambda x: "{0:0>8}".format(x[2:]), list(map(bin, data)))))
         newStr = dataStr[8:]
         print("Data: ", newStr)
+        self.strobe(SIDLE)
+        while (self.readSingleByte(MARCSTATE) != 0x01):
+            pass
         self.strobe(SFRX)
         return newStr
 
-    def sendData(self, bitstring):
+    def sendData(self, bitstring, syncword):
+        paddingLen = math.floor((512-16-len(bitstring))/8) # 16 Bits sync word
+        bitstring = paddingLen*"10101010"+"{0:0>16}".format(bin(int(syncword, 16))[2:])+bitstring
+
+        print("the bitstring is", len(bitstring), "bits long")
+
         data = []
         for i in range(0,len(bitstring)/8):
             data.append(int(bitstring[i*8:i*8+8], 2))
@@ -305,6 +313,7 @@ class CC1101:
             remaining_bytes = self.readSingleByte(TXBYTES) & 0x7F
 
         self.strobe(SFTX)
+        self.strobe(SFRX)
 
         if (self.readSingleByte(TXBYTES) & 0x7F) == 0:
             print("Packet sent!")
