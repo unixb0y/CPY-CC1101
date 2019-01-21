@@ -54,4 +54,9 @@ tx = CC1101(myspi, cs_b, gdo0_b, 50000, 434400000, "666A")
 
 ```
 
-For more details or questions, feel free to contact me, open an issue and first of all, have a look at the [official documentation / datasheet](http://www.ti.com/lit/ds/symlink/cc1101.pdf)!
+For more details or questions, feel free to contact me, open an issue and first of all, have a look at the [official documentation / datasheet](http://www.ti.com/lit/ds/symlink/cc1101.pdf)!  
+
+Resources for RollJam, which can be implemented with this library:  
+https://www.rtl-sdr.com/tag/rolljam/  
+http://spencerwhyte.blogspot.com/2014/03/delay-attack-jam-intercept-and-replay.html?m=1  
+https://samy.pl/defcon2015/
