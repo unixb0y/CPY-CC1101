@@ -111,13 +111,23 @@ RCCTRL0_STATUS = 0xFD  # Last RC Oscillator Calibration Result
 PA_TABLE = [0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
 class CC1101:
-    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword):
+    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword, offset=0): #optional frequency offset in Hz
         self.gdo0 = gdo0
-        self.frequency = frequency
         self.device = SPIDevice(spi, cs, baudrate=baudrate, polarity=0, phase=0)
         self.strobe(SRES) # reset
 
-        frequency_hex = hex(int(frequency * (pow(2,16) / 26000000)))
+        self.setFrequency(frequency, offset)
+
+        assert len(syncword) == 4
+        self.writeSingleByte(SYNC1, int(syncword[:2], 16))
+        self.writeSingleByte(SYNC0, int(syncword[2:], 16))
+
+        self.writeBurst(PATABLE, PA_TABLE)      
+        self.strobe(SFTX) # flush TX FIFO
+        self.strobe(SFRX) # flush RX FIFO
+
+    def setFrequency(self, frequency, offset):
+        frequency_hex = hex(int(frequency * (pow(2,16) / 26000000)+offset))
 
         byte2 = (int(frequency_hex, 16) >> 16) & 0xff;
         byte1 = (int(frequency_hex) >>  8) & 0xff;
@@ -125,26 +135,20 @@ class CC1101:
 
         self.writeSingleByte(FREQ2, byte2)
         self.writeSingleByte(FREQ1, byte1)
-        self.writeSingleByte(FREQ0, byte0)
-
-        assert len(syncword) == 4
-        self.writeSingleByte(SYNC1, int(syncword[:2], 16))
-        self.writeSingleByte(SYNC0, int(syncword[2:], 16))
-
-        self.writeBurst(PATABLE, PA_TABLE)        
+        self.writeSingleByte(FREQ0, byte0)  
 
     def setupRX(self):
         self.writeSingleByte(IOCFG2, 0x29)    
         self.writeSingleByte(IOCFG1, 0x2E)    
         self.writeSingleByte(IOCFG0, 0x06)    
         self.writeSingleByte(FIFOTHR, 0x47)   
-        self.writeSingleByte(PKTCTRL1, 0x04)  
-        self.writeSingleByte(PKTCTRL0, 0x04)  
+        self.writeSingleByte(PKTCTRL1, 0x00)  
+        self.writeSingleByte(PKTCTRL0, 0x00)  
         self.writeSingleByte(ADDR, 0x00)
         self.writeSingleByte(CHANNR, 0x00)
-        self.writeSingleByte(FSCTRL1, 0x06)   
+        self.writeSingleByte(FSCTRL1, 0x08)   
         self.writeSingleByte(FSCTRL0, 0x00)           
-        self.writeSingleByte(MDMCFG4, 0x87)    
+        self.writeSingleByte(MDMCFG4, 0xF7)    
         self.writeSingleByte(MDMCFG3, 0x10)    
         self.writeSingleByte(MDMCFG2, 0x32)   
         self.writeSingleByte(MDMCFG1, 0x22)   
@@ -155,13 +159,13 @@ class CC1101:
         self.writeSingleByte(MCSM0, 0x18)
         self.writeSingleByte(FOCCFG, 0x16)
         self.writeSingleByte(BSCFG, 0x6C)
-        self.writeSingleByte(AGCCTRL2, 0x04)  
+        self.writeSingleByte(AGCCTRL2, 0x06)  
         self.writeSingleByte(AGCCTRL1, 0x00)  
-        self.writeSingleByte(AGCCTRL0, 0x91)
+        self.writeSingleByte(AGCCTRL0, 0x95)
         self.writeSingleByte(WOREVT1, 0x87)
         self.writeSingleByte(WOREVT0, 0x6B)
         self.writeSingleByte(WORCTRL, 0xFB)
-        self.writeSingleByte(FREND1, 0x56)    
+        self.writeSingleByte(FREND1, 0xB6)    
         self.writeSingleByte(FREND0, 0x11)    
         self.writeSingleByte(FSCAL3, 0xE9)
         self.writeSingleByte(FSCAL2, 0x2A)
@@ -177,12 +181,12 @@ class CC1101:
         self.writeSingleByte(TEST0, 0x09)
 
     def setupTX(self):
-        self.writeSingleByte(IOCFG2, 0x69)    
-        self.writeSingleByte(IOCFG1, 0x6E)    
-        self.writeSingleByte(IOCFG0, 0x46)    
+        self.writeSingleByte(IOCFG2, 0x29)    
+        self.writeSingleByte(IOCFG1, 0x2E)    
+        self.writeSingleByte(IOCFG0, 0x06)    
         self.writeSingleByte(FIFOTHR, 0x47)   
-        self.writeSingleByte(PKTCTRL1, 0x04)  
-        self.writeSingleByte(PKTCTRL0, 0x04)  
+        self.writeSingleByte(PKTCTRL1, 0x00)  
+        self.writeSingleByte(PKTCTRL0, 0x00)  
         self.writeSingleByte(ADDR, 0x00)
         self.writeSingleByte(CHANNR, 0x00)
         self.writeSingleByte(FSCTRL1, 0x06)   
@@ -245,9 +249,10 @@ class CC1101:
         return ret
 
     def writeBurst(self, address, data):
-        data.insert(0, (WRITE_BURST | address))
+        temp = list(data)
+        temp.insert(0, (WRITE_BURST | address))
         with self.device as d:
-            d.write(bytearray(data))
+            d.write(bytearray(temp))
 
     def strobe(self, address):
         databuffer = bytearray([address, 0x00])
@@ -255,6 +260,11 @@ class CC1101:
             d.write(databuffer, end=1)
             d.readinto(databuffer, end=2)
         return databuffer
+
+    def setupCheck(self):
+        self.strobe(SFRX)
+        self.strobe(SRX)
+        print("ready to detect data")
 
     def receiveData(self, length):
         self.writeSingleByte(PKTLEN, length)
@@ -269,7 +279,7 @@ class CC1101:
             pass
         #detected falling edge
 
-        data_len = length+2 # add 2 status bytes
+        data_len = length#+2 # add 2 status bytes
         data = self.readBurst(RXFIFO, data_len)
         dataStr = ''.join(list(map(lambda x: "{0:0>8}".format(x[2:]), list(map(bin, data)))))
         newStr = dataStr[8:]
@@ -281,42 +291,43 @@ class CC1101:
         return newStr
 
     def sendData(self, bitstring, syncword):
+        print("TXBYTES before sendData:", self.readSingleByte(TXBYTES))
         paddingLen = math.floor((512-16-len(bitstring))/8) # 16 Bits sync word
         bitstring = paddingLen*"10101010"+"{0:0>16}".format(bin(int(syncword, 16))[2:])+bitstring
 
-        print("the bitstring is", len(bitstring), "bits long")
+        #print("the bitstring is", len(bitstring), "bits long")
 
         data = []
         for i in range(0,len(bitstring)/8):
             data.append(int(bitstring[i*8:i*8+8], 2))
 
         self.writeSingleByte(PKTLEN, len(data))
-        self.strobe(SRX)
+        
+        self.strobe(SIDLE)
+        while (self.readSingleByte(MARCSTATE) & 0x1F != 0x01): # wait for CC to enter idle state
+            pass
+        self.strobe(SFTX) # flush TX FIFO
+        time.sleep(0.05)
 
-        marcstate = self.readSingleByte(MARCSTATE) & 0x1F
-        dataToSend = []
-
-        while (marcstate != 0x0D):
-            marcstate = self.readSingleByte(MARCSTATE) & 0x1F
-
-        print(''.join(list(map(lambda x: "{0:0>8}".format(str(bin(x)[2:])), data))))
-
-        print("Sending packet of", len(data), "bytes")
-
+        #print(''.join(list(map(lambda x: "{0:0>8}".format(str(bin(x)[2:])), data))))
+        #print("Sending packet of", len(data), "bytes")
+        #print("Data in TXFIFO:\n", self.readBurst(TXFIFO, 64), "\nTXBYTES:", self.readSingleByte(TXBYTES))
         self.writeBurst(TXFIFO, data)
-        time.sleep(0.002)
+        #print("Data in TXFIFO:\n", self.readBurst(TXFIFO, 64), "\nTXBYTES:", self.readSingleByte(TXBYTES))
         self.strobe(STX)
 
         remaining_bytes = self.readSingleByte(TXBYTES) & 0x7F
         while remaining_bytes != 0:
-            time.sleep(0.001)
+            time.sleep(0.1)
+            print("Waiting until all bytes are transmited, remaining bytes: %d" % remaining_bytes)
             remaining_bytes = self.readSingleByte(TXBYTES) & 0x7F
 
         self.strobe(SFTX)
         self.strobe(SFRX)
+        time.sleep(0.05)
 
         if (self.readSingleByte(TXBYTES) & 0x7F) == 0:
-            print("Packet sent!")
+            print("Packet sent!\n\n")
             return True
 
         else:
