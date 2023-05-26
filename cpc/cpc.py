@@ -136,6 +136,19 @@ class CC1101:
         self.writeSingleByte(FREQ2, byte2)
         self.writeSingleByte(FREQ1, byte1)
         self.writeSingleByte(FREQ0, byte0)  
+       
+    def getSampleRate(self, freq_xosc = 26000000):
+        drate_mantissa = self.readSingleByte(MDMCFG3)
+        drate_exponent = self.readSingleByte(MDMCFG4) & 0xF
+        sample_rate = (256 + drate_mantissa) * \
+            pow(2, drate_exponent - 28) * freq_xosc
+        return sample_rate
+    
+    def setSampleRate_4000(self):
+        self.writeSingleByte(MDMCFG3, 0x43)
+        
+   def setSampleRate(self):
+        pass
 
     def setupRX(self):
         self.writeSingleByte(IOCFG2, 0x29)    
