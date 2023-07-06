@@ -147,6 +147,7 @@ class CC1101:
     def setSampleRate_4000(self):
         self.writeSingleByte(MDMCFG3, 0x43)
 
+   # TODO: Implement set sample rate function
    def setSampleRate(self):
         pass
     
