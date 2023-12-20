@@ -117,6 +117,7 @@ class CC1101:
         self.strobe(SRES) # reset
 
         self.setFrequency(frequency, offset)
+        self.setSampleRate(baudrate)
 
         assert len(syncword) == 4
         self.writeSingleByte(SYNC1, int(syncword[:2], 16))
@@ -143,9 +144,6 @@ class CC1101:
         sample_rate = (256 + drate_mantissa) * \
             pow(2, drate_exponent - 28) * freq_xosc
         return sample_rate
-
-    def setSampleRate_4000(self):
-        self.writeSingleByte(MDMCFG3, 0x43)
 
    # Untested, based on rfcat, but with 26mhz crystal? YS1 has 24, are we sure it is 26? CC1111 and CC1101 are very similar. Will test when I get the chance in the next few months
     def setSampleRate(self, sample_rate, mhz=26):
