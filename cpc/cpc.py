@@ -148,23 +148,22 @@ class CC1101:
         self.writeSingleByte(MDMCFG3, 0x43)
 
    # Untested, based on rfcat, but with 26mhz crystal? YS1 has 24, are we sure it is 26? CC1111 and CC1101 are very similar. Will test when I get the chance in the next few months
-   def setSampleRate(self, sample_rate, mhz=26):
-       radiocfg.mdmcfg3 = self.readSingleByte(MDMCFG3)
-       radiocfg.mdmcfg4 = self.readSingleByte(MDMCFG4)
-       
-       drate_e = None
-       drate_m = None
-       for e in range(16):
-           m = int((old_div(sample_rate * pow(2,28), (pow(2,e)* (mhz*1000000.0)))-256) + .5)        # rounded evenly
-           if m < 256:
-               drate_e = e
-               drate_m = m
-               break
+    def setSampleRate(self, sample_rate, mhz=26):
+        radiocfg.mdmcfg3 = self.readSingleByte(MDMCFG3)
+        radiocfg.mdmcfg4 = self.readSingleByte(MDMCFG4)
+        
+        drate_e = None
+        drate_m = None
+        for e in range(16):
+            m = int((old_div(sample_rate * pow(2,28), (pow(2,e)* (mhz*1000000.0)))-256) + .5)        # rounded evenly
+            if m < 256:
+                drate_e = e
+                drate_m = m
+                break
         if drate_e is None:
             raise Exception("Sample Rate does not translate into acceptable parameters.")
             
         sample_rate = 1000000.0 * mhz * (256+drate_m) * pow(2,drate_e) / pow(2,28)
-
         radiocfg.mdmcfg3 = drate_m
         radiocfg.mdmcfg4 &= ~0x0F
         radiocfg.mdmcfg4 |= drate_e
