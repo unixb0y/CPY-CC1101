@@ -111,7 +111,7 @@ RCCTRL0_STATUS = 0xFD  # Last RC Oscillator Calibration Result
 PA_TABLE = [0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
 class CC1101:
-    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword, offset=0): #optional frequency offset in Hz
+    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword=None, offset=0): #optional frequency offset in Hz
         self.gdo0 = gdo0
         self.device = SPIDevice(spi, cs, baudrate=baudrate, polarity=0, phase=0)
         self.strobe(SRES) # reset
@@ -126,7 +126,7 @@ class CC1101:
         
     def setMdmSyncWord(self, syncword=None):
         if syncword == None:
-            syncword = 0
+            syncword = "0"
         syncword = int(syncword, 16)
         sync1 = syncword >> 8
         sync0 = syncword & 0xff
