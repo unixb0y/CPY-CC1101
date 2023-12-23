@@ -111,20 +111,27 @@ RCCTRL0_STATUS = 0xFD  # Last RC Oscillator Calibration Result
 PA_TABLE = [0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
 class CC1101:
-    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword, offset=0): #optional frequency offset in Hz
+    def __init__(self, spi, cs, gdo0, baudrate, frequency, syncword=None, offset=0): #optional frequency offset in Hz
         self.gdo0 = gdo0
         self.device = SPIDevice(spi, cs, baudrate=baudrate, polarity=0, phase=0)
         self.strobe(SRES) # reset
 
         self.setFrequency(frequency, offset)
-
-        assert len(syncword) == 4
-        self.writeSingleByte(SYNC1, int(syncword[:2], 16))
-        self.writeSingleByte(SYNC0, int(syncword[2:], 16))
+        self.setSampleRate(baudrate)
+        self.setMdmSyncWord(syncword)
 
         self.writeBurst(PATABLE, PA_TABLE)      
         self.strobe(SFTX) # flush TX FIFO
         self.strobe(SFRX) # flush RX FIFO
+        
+    def setMdmSyncWord(self, syncword=None):
+        if syncword == None:
+            syncword = "0"
+        syncword = int(syncword, 16)
+        sync1 = syncword >> 8
+        sync0 = syncword & 0xff
+        self.writeSingleByte(SYNC1, (sync1))
+        self.writeSingleByte(SYNC0, (sync0))
 
     def setFrequency(self, frequency, offset):
         frequency_hex = hex(int(frequency * (pow(2,16) / 26000000)+offset))
@@ -144,13 +151,29 @@ class CC1101:
             pow(2, drate_exponent - 28) * freq_xosc
         return sample_rate
 
-    def setSampleRate_4000(self):
-        self.writeSingleByte(MDMCFG3, 0x43)
+   # Tested seems to be working, based on rfcat, but with 26mhz crystal? YS1 has 24, are we sure it is 26? CC1111 and CC1101 are very similar. Will test when I get the chance in the next few months
+    def setSampleRate(self, sample_rate, mhz=26):
+        radiocfg3 = self.readSingleByte(MDMCFG3)
+        radiocfg4 = self.readSingleByte(MDMCFG4)
+        
+        drate_e = None
+        drate_m = None
+        for e in range(16):
+            m = int(((sample_rate * pow(2,28)) / ((pow(2,e)* (mhz*1000000.0)))-256) + .5)        # rounded evenly
+            if m < 256:
+                drate_e = e
+                drate_m = m
+                break
+        if drate_e is None:
+            raise Exception("Sample Rate does not translate into acceptable parameters.")
+            
+        sample_rate = 1000000.0 * mhz * (256+drate_m) * pow(2,drate_e) / pow(2,28)
+        radiocfg3 = drate_m
+        radiocfg4 &= ~0x0F
+        radiocfg4 |= drate_e
+        self.writeSingleByte(MDMCFG3, (radiocfg3))
+        self.writeSingleByte(MDMCFG4, (radiocfg4))
 
-   # TODO: Implement set sample rate function
-   def setSampleRate(self):
-        pass
-    
     def setupRX(self):
         self.writeSingleByte(IOCFG2, 0x29)    
         self.writeSingleByte(IOCFG1, 0x2E)    
@@ -161,9 +184,7 @@ class CC1101:
         self.writeSingleByte(ADDR, 0x00)
         self.writeSingleByte(CHANNR, 0x00)
         self.writeSingleByte(FSCTRL1, 0x08)   
-        self.writeSingleByte(FSCTRL0, 0x00)           
-        self.writeSingleByte(MDMCFG4, 0xF7)    
-        self.writeSingleByte(MDMCFG3, 0x10)    
+        self.writeSingleByte(FSCTRL0, 0x00)             
         self.writeSingleByte(MDMCFG2, 0x32)   
         self.writeSingleByte(MDMCFG1, 0x22)   
         self.writeSingleByte(MDMCFG0, 0xF8)
@@ -204,9 +225,7 @@ class CC1101:
         self.writeSingleByte(ADDR, 0x00)
         self.writeSingleByte(CHANNR, 0x00)
         self.writeSingleByte(FSCTRL1, 0x06)   
-        self.writeSingleByte(FSCTRL0, 0x00)   
-        self.writeSingleByte(MDMCFG4, 0xE7)    
-        self.writeSingleByte(MDMCFG3, 0x10)    
+        self.writeSingleByte(FSCTRL0, 0x00)     
         self.writeSingleByte(MDMCFG2, 0x30)    #. 32 would be 16/16 sync word bits .#
         self.writeSingleByte(MDMCFG1, 0x22)   
         self.writeSingleByte(MDMCFG0, 0xF8)
