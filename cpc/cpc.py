@@ -118,14 +118,20 @@ class CC1101:
 
         self.setFrequency(frequency, offset)
         self.setSampleRate(baudrate)
-
-        assert len(syncword) == 4
-        self.writeSingleByte(SYNC1, int(syncword[:2], 16))
-        self.writeSingleByte(SYNC0, int(syncword[2:], 16))
+        self.setMdmSyncWord(syncword)
 
         self.writeBurst(PATABLE, PA_TABLE)      
         self.strobe(SFTX) # flush TX FIFO
         self.strobe(SFRX) # flush RX FIFO
+        
+    def setMdmSyncWord(self, syncword=None):
+        if syncword == None:
+            syncword = 0
+        syncword = int(syncword, 16)
+        sync1 = syncword >> 8
+        sync0 = syncword & 0xff
+        self.writeSingleByte(SYNC1, (sync1))
+        self.writeSingleByte(SYNC0, (sync0))
 
     def setFrequency(self, frequency, offset):
         frequency_hex = hex(int(frequency * (pow(2,16) / 26000000)+offset))
